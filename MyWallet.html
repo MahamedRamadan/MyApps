@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ET Cash - Quick Secure</title>
+  <meta name="theme-color" content="#0d1b2a">
+  <style>
+    :root {
+      --primary: #00d2ff;
+      --primary-dark: #0082b2;
+      --header-bg: linear-gradient(135deg, #0a1128 0%, #1c2541 100%);
+      --bg: #f4f6f9;
+      --text: #111827;
+      --card-bg: #ffffff;
+      --input-bg: #ffffff;
+      --input-border: #d1d5db;
+      --sub-text: #6b7280;
+      --icon-bg: #f3f4f6;
+      --toast-bg: rgba(0, 0, 0, 0.85);
+      --toast-text: #fff;
+    }
+
+    body.dark-mode {
+      --primary: #38bdf8;
+      --primary-dark: #0284c7;
+      --header-bg: linear-gradient(135deg, #090d16 0%, #111827 100%);
+      --bg: #0b0f19;
+      --text: #f3f4f6;
+      --card-bg: #161e2e;
+      --input-bg: #1f293d;
+      --input-border: #374151;
+      --sub-text: #9ca3af;
+      --icon-bg: #1f293d;
+      --toast-bg: rgba(255, 255, 255, 0.9);
+      --toast-text: #000;
+    }
+
+    body { 
+      font-family: system-ui, -apple-system, sans-serif; 
+      background-color: var(--bg); 
+      color: var(--text);
+      margin: 0;
+      transition: background-color 0.3s, color 0.3s;
+      -webkit-tap-highlight-color: transparent;
+      padding-bottom: 40px;
+    }
+
+    .view { display: none; min-height: 100vh; animation: fadeIn 0.25s ease-in-out; }
+    .view.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    
+    /* نافذة إدخال الرقم السري (تتحول إلى نجوم الآن) */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+      background: rgba(0,0,0,0.65); display: none; justify-content: center; 
+      align-items: center; z-index: 2000; backdrop-filter: blur(4px);
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+      background: var(--card-bg); padding: 25px; border-radius: 20px; 
+      width: 85%; max-width: 320px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .modal-pin-input {
+      width: 100%; padding: 15px; border-radius: 12px; border: 2px solid var(--primary);
+      margin: 15px 0; text-align: center; letter-spacing: 12px; font-size: 28px; 
+      background: var(--input-bg); color: var(--text); box-sizing: border-box;
+      -webkit-text-security: disc; /* يضمن إخفاء الأرقام وتحويلها لنجوم/دوائر */
+    }
+    .modal-pin-input:focus { outline: none; }
+    .modal-buttons { display: flex; gap: 10px; }
+
+    /* الهيدر الرئيسي */
+    .main-header {
+      background: var(--header-bg); color: white; padding: 25px 20px 70px 20px;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom-left-radius: 30px; border-bottom-right-radius: 30px;
+    }
+    .header-user-info { display: flex; align-items: center; gap: 12px; }
+    .user-avatar { 
+      background: rgba(255,255,255,0.15); width: 45px; height: 45px; border-radius: 50%; 
+      display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .user-text h1 { margin: 0; font-size: 18px; font-weight: bold; }
+    .user-text p { margin: 2px 0 0; font-size: 12px; opacity: 0.85; direction: ltr; text-align: right; }
+    
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+    .icon-btn { 
+      background: rgba(255,255,255,0.15); border: none; color: white; 
+      width: 38px; height: 38px; border-radius: 50%; font-size: 16px; 
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: 0.2s;
+    }
+    .icon-btn:active { transform: scale(0.9); }
+
+    /* كارت الرصيد الأساسي */
+    .balance-card {
+      background: var(--card-bg); margin: -45px 16px 20px; border-radius: 20px;
+      padding: 22px; box-shadow: 0 8px 25px rgba(0,0,0,0.06); text-align: center;
+      border: 1px solid rgba(0,0,0,0.03);
+    }
+    .balance-card .title-balance { margin: 0; color: var(--sub-text); font-size: 13px; }
+    .balance-card h2 { margin: 8px 0; font-size: 30px; color: var(--text); letter-spacing: 1px; }
+    .check-balance-btn { 
+      background: rgba(0, 210, 255, 0.12); color: var(--primary); border: none; 
+      padding: 10px 24px; border-radius: 25px; font-weight: bold; cursor: pointer; 
+      font-size: 13px; margin-top: 8px; transition: 0.2s;
+    }
+    .check-balance-btn:active { background: var(--primary); color: white; }
+
+    /* العناوين والشبكة */
+    .section-header-row { display: flex; justify-content: space-between; align-items: center; margin: 20px 20px 10px; }
+    .section-title { font-weight: bold; font-size: 15px; color: var(--text); margin: 0; }
+    
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 0 16px; }
+    .grid-item {
+      background: var(--card-bg); border-radius: 18px; padding: 16px 8px;
+      text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.03); cursor: pointer;
+      border: 1px solid rgba(0,0,0,0.02); transition: 0.2s;
+    }
+    .grid-item:active { transform: scale(0.96); }
+    .icon-circle {
+      background: var(--icon-bg); width: 48px; height: 48px; border-radius: 50%;
+      margin: 0 auto 8px; display: flex; justify-content: center; align-items: center;
+      font-size: 20px;
+    }
+    .grid-item span { font-size: 12px; font-weight: 600; color: var(--text); display: block; }
+    .grid-item small { font-size: 10px; color: var(--sub-text); display: block; margin-top: 2px; }
+
+    /* النماذج والصفحات الفرعية */
+    .sub-page-header {
+      background: var(--card-bg); padding: 15px 20px; display: flex; align-items: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.04); position: sticky; top: 0; z-index: 10;
+    }
+    .back-btn { font-size: 20px; cursor: pointer; margin-left: 15px; background: none; border: none; color: var(--text); padding: 5px;}
+    .sub-page-title { font-size: 17px; font-weight: bold; margin: 0; }
+    .form-container { padding: 20px; }
+    
+    .input-group { margin-bottom: 18px; }
+    .input-group label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: bold; color: var(--text); }
+    .input-group input, .input-group select {
+      width: 100%; padding: 15px; border-radius: 12px; border: 1px solid var(--input-border); 
+      box-sizing: border-box; font-size: 18px; background: var(--input-bg); color: var(--text); text-align: center;
+    }
+    .input-group input:focus, .input-group select:focus { outline: none; border-color: var(--primary); }
+    
+    .primary-btn {
+      width: 100%; padding: 15px; background: var(--primary); color: #0f172a; 
+      border: none; border-radius: 12px; font-size: 16px; font-weight: bold; 
+      cursor: pointer; margin-top: 10px; transition: 0.2s;
+    }
+    .primary-btn:active { opacity: 0.9; transform: scale(0.98); }
+    
+    /* الإعدادات وتخصيص الأيقونات والأكواد */
+    .settings-section { background: var(--card-bg); border-radius: 16px; padding: 16px; margin-bottom: 20px; border: 1px solid var(--input-border); }
+    .settings-section h3 { margin-top: 0; font-size: 15px; color: var(--primary); border-bottom: 1px solid var(--input-border); padding-bottom: 10px; }
+    
+    .service-customizer-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+    .service-customizer-row input { flex: 2; padding: 8px; font-size: 13px; text-align: right; }
+
+    #toast {
+      visibility: hidden; min-width: 240px; background-color: var(--toast-bg); color: var(--toast-text);
+      text-align: center; border-radius: 30px; padding: 12px 20px; font-size: 13px; font-weight: bold;
+      position: fixed; z-index: 3000; left: 50%; bottom: 30px; transform: translateX(-50%);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25); opacity: 0; transition: opacity 0.3s, bottom 0.3s;
+    }
+    #toast.show { visibility: visible; opacity: 1; bottom: 45px; }
+
+    .btn-row { display: flex; gap: 8px; }
+    .btn-row select { flex: 1; }
+    .btn-row .action-btn { background: var(--primary); color: #0f172a; border: none; border-radius: 12px; padding: 0 15px; cursor: pointer; font-size: 16px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <div id="toast">تمت العملية بنجاح</div>
+
+  <!-- نافذة الرقم السري (تتحول إلى نجوم + لوحة مفاتيح رقمية) -->
+  <div class="modal-overlay" id="pin-modal">
+    <div class="modal-box">
+      <h3 style="margin-top:0; color:var(--text);">🔒 تأكيد العملية</h3>
+      <p style="color:var(--sub-text); font-size:13px; margin-bottom:5px;">أدخل الرقم السري (M-PIN)</p>
+      <input type="password" inputmode="numeric" pattern="[0-9]*" id="transaction-pin" class="modal-pin-input" placeholder="******" maxlength="6">
+      <div class="modal-buttons">
+        <button class="primary-btn" onclick="submitTransaction()" style="background:var(--primary); color:#0f172a; margin-top:0;">تأكيد</button>
+        <button class="primary-btn" onclick="closePinModal()" style="background:#6b7280; color:white; margin-top:0;">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- الصفحة الرئيسية -->
+  <div id="view-home" class="view active">
+    <div class="main-header">
+      <div class="header-user-info">
+        <div class="user-avatar">ET</div>
+        <div class="user-text">
+          <h1>أهلاً بك، محمد رمضان</h1>
+          <p>0112898****</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" onclick="toggleTheme()" id="theme-icon">🌙</button>
+        <button class="icon-btn" onclick="openPage('view-settings')">⚙️</button>
+      </div>
+    </div>
+
+    <div class="balance-card">
+      <p class="title-balance">الرصيد المتاح</p>
+      <h2>****** ج.م</h2>
+      <button class="check-balance-btn" onclick="prepareTransaction('balance')">استعلام عن الرصيد</button>
+    </div>
+
+    <div class="section-header-row">
+      <span class="section-title">خدماتي</span>
+    </div>
+    <div class="grid" id="main-services-grid"></div>
+
+    <div class="section-header-row">
+      <span class="section-title">خدمات أخرى ومعاملات</span>
+    </div>
+    <div class="grid" id="other-services-grid"></div>
+  </div>
+
+  <!-- صفحة الإعدادات وتخصيص الأكواد والأيقونات -->
+  <div id="view-settings" class="view">
+    <div class="sub-page-header">
+      <button class="back-btn" onclick="openPage('view-home')">➔</button>
+      <h2 class="sub-page-title">الإعدادات وتخصيص الأكواد</h2>
+    </div>
+    <div class="form-container">
+      
+      <div class="settings-section">
+        <h3>🎨 تخصيص أسماء وأيقونات الخدمات</h3>
+        <div id="customizer-container"></div>
+      </div>
+
+      <div class="settings-section">
+        <h3>🛠️ تعديل الأكواد السريعة (USSD)</h3>
+        <label style="font-size:12px; color:var(--sub-text); display:block; margin-bottom:10px;">المتغيرات المتاحة: {num} للرقم، {amt} للمبلغ، {pin} للرقم السري.</label>
+        
+        <div class="input-group"><label>كود التحويل</label><input type="text" id="code-transfer" style="text-align:left; direction:ltr;"></div>
+        <div class="input-group"><label>كود سحب ATM</label><input type="text" id="code-withdraw" style="text-align:left; direction:ltr;"></div>
+        <div class="input-group"><label>كود إيداع ATM</label><input type="text" id="code-deposit" style="text-align:left; direction:ltr;"></div>
+        <div class="input-group"><label>كود شحن رصيد</label><input type="text" id="code-recharge" style="text-align:left; direction:ltr;"></div>
+        <div class="input-group"><label>كود كارت فكة</label><input type="text" id="code-fakka" style="text-align:left; direction:ltr;"></div>
+        <div class="input-group"><label>كود الاستعلام عن الرصيد</label><input type="text" id="code-balance" style="text-align:left; direction:ltr;"></div>
+        <div class="input-group"><label>كود سجل المعاملات (مخصص لك)</label><input type="text" id="code-history" placeholder="أدخل الكود هنا..." style="text-align:left; direction:ltr;"></div>
+      </div>
+
+      <button class="primary-btn" onclick="saveSettings()">💾 حفظ التغييرات</button>
+      <button class="primary-btn" style="background:transparent; border:1px solid var(--primary); color:var(--primary); margin-top:10px;" onclick="resetCustomization()">🔄 استعادة الافتراضيات</button>
+    </div>
+  </div>
+
+  <!-- صفحة تحويل أموال -->
+  <div id="view-transfer" class="view">
+    <div class="sub-page-header">
+      <button class="back-btn" onclick="openPage('view-home')">➔</button>
+      <h2 class="sub-page-title">تحويل أموال</h2>
+    </div>
+    <div class="form-container">
+      <div class="input-group">
+        <label>جهات الاتصال المفضلة ⭐</label>
+        <div class="btn-row">
+          <select id="fav-list" onchange="applyFavorite()">
+            <option value="">-- اختر من المفضلة --</option>
+          </select>
+          <button class="action-btn" onclick="deleteFavorite()" style="background:#ef4444; color:white;" title="حذف">🗑️</button>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>رقم هاتف المستلم</label>
+        <div class="btn-row">
+          <input type="tel" inputmode="numeric" pattern="[0-9]*" id="tr-num" placeholder="011...">
+          <button class="action-btn" onclick="saveFavorite()" title="حفظ">+</button>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>المبلغ المراد تحويله (ج.م)</label>
+        <input type="tel" inputmode="numeric" pattern="[0-9]*" id="tr-amt" placeholder="0.00">
+      </div>
+      <button class="primary-btn" onclick="prepareTransaction('transfer')">تحويل الآن</button>
+    </div>
+  </div>
+
+  <!-- صفحة السحب والإيداع -->
+  <div id="view-withdraw" class="view">
+    <div class="sub-page-header">
+      <button class="back-btn" onclick="openPage('view-home')">➔</button>
+      <h2 class="sub-page-title">سحب من الـ ATM</h2>
+    </div>
+    <div class="form-container">
+      <div class="input-group">
+        <label>المبلغ المراد سحبه (ج.م)</label>
+        <input type="tel" inputmode="numeric" pattern="[0-9]*" id="wd-amt" placeholder="0.00">
+      </div>
+      <button class="primary-btn" onclick="prepareTransaction('withdraw')">توليد كود السحب</button>
+    </div>
+  </div>
+
+  <div id="view-deposit" class="view">
+    <div class="sub-page-header">
+      <button class="back-btn" onclick="openPage('view-home')">➔</button>
+      <h2 class="sub-page-title">إيداع عبر الـ ATM</h2>
+    </div>
+    <div class="form-container">
+      <div class="input-group">
+        <label>المبلغ المراد إيداعه (ج.م)</label>
+        <input type="tel" inputmode="numeric" pattern="[0-9]*" id="dp-amt" placeholder="0.00">
+      </div>
+      <button class="primary-btn" onclick="prepareTransaction('deposit')">توليد كود الإيداع</button>
+    </div>
+  </div>
+
+  <!-- صفحة الشحن والكارت -->
+  <div id="view-recharge" class="view">
+    <div class="sub-page-header">
+      <button class="back-btn" onclick="openPage('view-home')">➔</button>
+      <h2 class="sub-page-title">شحن رصيد</h2>
+    </div>
+    <div class="form-container">
+      <div class="input-group">
+        <label>نوع الشحن</label>
+        <select id="rc-type" onchange="toggleRechargeType()">
+          <option value="self">شحن لنفسي</option>
+          <option value="other">شحن لرقم آخر</option>
+        </select>
+      </div>
+      <div class="input-group" id="rc-num-group" style="display:none;">
+        <label>رقم الموبايل</label>
+        <input type="tel" inputmode="numeric" pattern="[0-9]*" id="rc-num" placeholder="011...">
+      </div>
+      <div class="input-group">
+        <label>المبلغ (ج.م)</label>
+        <input type="tel" inputmode="numeric" pattern="[0-9]*" id="rc-amt" placeholder="0.00">
+      </div>
+      <button class="primary-btn" onclick="prepareTransaction('recharge')">شحن الآن</button>
+    </div>
+  </div>
+
+  <div id="view-fakka" class="view">
+    <div class="sub-page-header">
+      <button class="back-btn" onclick="openPage('view-home')">➔</button>
+      <h2 class="sub-page-title">كارت فكة</h2>
+    </div>
+    <div class="form-container">
+      <div class="input-group">
+        <label>اختر الفئة</label>
+        <select id="fk-amt">
+          <option value="5">كارت 5 جنيه</option>
+          <option value="7">كارت 7 جنيه</option>
+          <option value="10">كارت 10 جنيه</option>
+          <option value="15">كارت 15 جنيه</option>
+        </select>
+      </div>
+      <button class="primary-btn" onclick="prepareTransaction('fakka')">شراء الكارت</button>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_CONFIG = {
+      services: [
+        { id: 'transfer', name: 'تحويل', icon: '💸', desc: 'فوري ومجاني', page: 'view-transfer', group: 'main' },
+        { id: 'withdraw', name: 'سحب (ATM)', icon: '🏧', desc: 'بدون بطاقة', page: 'view-withdraw', group: 'main' },
+        { id: 'deposit', name: 'إيداع (ATM)', icon: '📥', desc: 'ماكينات', page: 'view-deposit', group: 'main' },
+        { id: 'recharge', name: 'شحن رصيد', icon: '📱', desc: 'كل الشبكات', page: 'view-recharge', group: 'other' },
+        { id: 'fakka', name: 'كارت فكة', icon: '🎟️', desc: 'دقائق وميجابايت', page: 'view-fakka', group: 'other' },
+        { id: 'history', name: 'معاملاتي', icon: '📜', desc: 'سجل الحركات', action: 'history', group: 'other' }
+      ],
+      codes: {
+        transfer: "*777*1*{num}*{num}*{amt}*{pin}#", 
+        withdraw: "*777*3*2*{amt}*{pin}#",          
+        deposit: "*777*3*1*{amt}*{pin}#",           
+        recharge: "*777*2*1*{amt}*{pin}#",          
+        recharge_other: "*777*2*2*{num}*{amt}*{pin}#", 
+        fakka: "*777*2*3*{amt}*{pin}#",
+        balance: "*777*4*{pin}#",
+        history: "" 
+      }
+    };
+
+    let appConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+    let favorites = [];
+    let pendingAction = null;
+
+    window.onload = () => {
+      if(localStorage.getItem('et_theme') === 'dark') {
+        document.body.classList.add('dark-mode');
+        document.getElementById('theme-icon').innerText = '☀️';
+      }
+      loadUserData();
+      renderUI();
+    };
+
+    function loadUserData() {
+      const saved = localStorage.getItem('et_app_config');
+      if (saved) {
+        try { appConfig = JSON.parse(saved); } catch(e) {}
+      }
+      favorites = JSON.parse(localStorage.getItem('et_favorites')) || [];
+      loadFavoritesDropdown();
+    }
+
+    function renderUI() {
+      const mainGrid = document.getElementById('main-services-grid');
+      const otherGrid = document.getElementById('other-services-grid');
+      const customizer = document.getElementById('customizer-container');
+
+      mainGrid.innerHTML = '';
+      otherGrid.innerHTML = '';
+      customizer.innerHTML = '';
+
+      appConfig.services.forEach(s => {
+        const cardHTML = `
+          <div class="grid-item" onclick="${s.page ? `openPage('${s.page}')` : `prepareTransaction('${s.action}')`}">
+            <div class="icon-circle">${s.icon}</div>
+            <span>${s.name}</span>
+            <small>${s.desc || ''}</small>
+          </div>
+        `;
+        if(s.group === 'main') mainGrid.innerHTML += cardHTML;
+        else otherGrid.innerHTML += cardHTML;
+
+        customizer.innerHTML += `
+          <div class="service-customizer-row">
+            <input type="text" id="cust-icon-${s.id}" value="${s.icon}" placeholder="الأيقونة" style="flex:0.7; text-align:center;">
+            <input type="text" id="cust-name-${s.id}" value="${s.name}" placeholder="اسم الخدمة">
+          </div>
+        `;
+      });
+
+      document.getElementById('code-transfer').value = appConfig.codes.transfer;
+      document.getElementById('code-withdraw').value = appConfig.codes.withdraw;
+      document.getElementById('code-deposit').value = appConfig.codes.deposit;
+      document.getElementById('code-recharge').value = appConfig.codes.recharge;
+      document.getElementById('code-fakka').value = appConfig.codes.fakka;
+      document.getElementById('code-balance').value = appConfig.codes.balance;
+      document.getElementById('code-history').value = appConfig.codes.history || '';
+    }
+
+    function saveSettings() {
+      appConfig.services.forEach(s => {
+        const nameInput = document.getElementById(`cust-name-${s.id}`);
+        const iconInput = document.getElementById(`cust-icon-${s.id}`);
+        if(nameInput) s.name = nameInput.value;
+        if(iconInput) s.icon = iconInput.value;
+      });
+
+      appConfig.codes.transfer = document.getElementById('code-transfer').value;
+      appConfig.codes.withdraw = document.getElementById('code-withdraw').value;
+      appConfig.codes.deposit = document.getElementById('code-deposit').value;
+      appConfig.codes.recharge = document.getElementById('code-recharge').value;
+      appConfig.codes.fakka = document.getElementById('code-fakka').value;
+      appConfig.codes.balance = document.getElementById('code-balance').value;
+      appConfig.codes.history = document.getElementById('code-history').value;
+
+      localStorage.setItem('et_app_config', JSON.stringify(appConfig));
+      renderUI();
+      showToast("✅ تم حفظ التعديلات والأكواد بنجاح");
+      setTimeout(() => openPage('view-home'), 800);
+    }
+
+    function resetCustomization() {
+      if(confirm("استعادة الإعدادات الافتراضية؟")) {
+        localStorage.removeItem('et_app_config');
+        appConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+        renderUI();
+        showToast("🔄 تمت الاستعادة بنجاح");
+      }
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.innerText = msg;
+      t.classList.add("show");
+      setTimeout(() => t.classList.remove("show"), 2800);
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('dark-mode');
+      const isDark = document.body.classList.contains('dark-mode');
+      localStorage.setItem('et_theme', isDark ? 'dark' : 'light');
+      document.getElementById('theme-icon').innerText = isDark ? '☀️' : '🌙';
+    }
+
+    function openPage(id) {
+      document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      window.scrollTo(0, 0);
+    }
+
+    function loadFavoritesDropdown() {
+      const list = document.getElementById('fav-list');
+      list.innerHTML = '<option value="">-- اختر من المفضلة --</option>';
+      favorites.forEach((fav, i) => {
+        list.innerHTML += `<option value="${fav.num}" data-index="${i}">${fav.name} (${fav.num})</option>`;
+      });
+    }
+
+    function saveFavorite() {
+      const num = document.getElementById('tr-num').value;
+      if(!num) return showToast("⚠️ أدخل رقم الهاتف أولاً");
+      const name = prompt("أدخل اسم جهة الاتصال:");
+      if(!name) return;
+      favorites.push({ name, num });
+      localStorage.setItem('et_favorites', JSON.stringify(favorites));
+      loadFavoritesDropdown();
+      showToast("⭐ تم الحفظ في المفضلة");
+    }
+
+    function applyFavorite() {
+      const val = document.getElementById('fav-list').value;
+      if(val) document.getElementById('tr-num').value = val;
+    }
+
+    function deleteFavorite() {
+      const list = document.getElementById('fav-list');
+      const idx = list.options[list.selectedIndex]?.getAttribute('data-index');
+      if(idx !== undefined && confirm("حذف من المفضلة؟")) {
+        favorites.splice(idx, 1);
+        localStorage.setItem('et_favorites', JSON.stringify(favorites));
+        loadFavoritesDropdown();
+        document.getElementById('tr-num').value = '';
+      }
+    }
+
+    function toggleRechargeType() {
+      const type = document.getElementById('rc-type').value;
+      document.getElementById('rc-num-group').style.display = (type === 'other') ? 'block' : 'none';
+    }
+
+    function prepareTransaction(type) {
+      if (type === 'transfer' && (!document.getElementById('tr-num').value || !document.getElementById('tr-amt').value)) return showToast("⚠️ أدخل الرقم والمبلغ");
+      if (type === 'withdraw' && !document.getElementById('wd-amt').value) return showToast("⚠️ أدخل المبلغ المطلوب");
+      if (type === 'deposit' && !document.getElementById('dp-amt').value) return showToast("⚠️ أدخل مبلغ الإيداع");
+      if (type === 'recharge' && !document.getElementById('rc-amt').value) return showToast("⚠️ أدخل مبلغ الشحن");
+      if (type === 'history' && (!appConfig.codes.history || appConfig.codes.history.trim() === '')) {
+        return showToast("⚠️ كود سجل المعاملات فارغ، يرجى إضافته من الإعدادات أولاً");
+      }
+
+      pendingAction = type;
+      document.getElementById('transaction-pin').value = '';
+      document.getElementById('pin-modal').classList.add('active');
+      setTimeout(() => document.getElementById('transaction-pin').focus(), 100);
+    }
+
+    function closePinModal() {
+      document.getElementById('pin-modal').classList.remove('active');
+    }
+
+    function submitTransaction() {
+      const pin = document.getElementById('transaction-pin').value;
+      if (!pin || pin.length < 4) return showToast("⚠️ الرقم السري غير مكتمل");
+      
+      const type = pendingAction;
+      closePinModal();
+      pendingAction = null;
+
+      let tpl = "", num = "", amt = "";
+
+      if (type === 'transfer') {
+        tpl = appConfig.codes.transfer;
+        num = document.getElementById('tr-num').value;
+        amt = document.getElementById('tr-amt').value;
+      } else if (type === 'withdraw') {
+        tpl = appConfig.codes.withdraw;
+        amt = document.getElementById('wd-amt').value;
+      } else if (type === 'deposit') {
+        tpl = appConfig.codes.deposit;
+        amt = document.getElementById('dp-amt').value;
+      } else if (type === 'recharge') {
+        const rcType = document.getElementById('rc-type').value;
+        amt = document.getElementById('rc-amt').value;
+        if(rcType === 'other') {
+          tpl = appConfig.codes.recharge_other;
+          num = document.getElementById('rc-num').value;
+        } else {
+          tpl = appConfig.codes.recharge;
+        }
+      } else if (type === 'fakka') {
+        tpl = appConfig.codes.fakka;
+        amt = document.getElementById('fk-amt').value;
+      } else if (type === 'balance' || type === 'history') {
+        tpl = appConfig.codes[type];
+      }
+
+      if(!tpl) return showToast("❌ الكود غير متوفر أو فارغ");
+
+      let finalCode = tpl
+        .replace(/{num}/g, num)
+        .replace(/{amt}/g, amt)
+        .replace(/{pin}/g, pin);
+
+      window.location.href = `tel:${finalCode.replace(/#/g, '%23')}`;
+      document.querySelectorAll('input[type="tel"]').forEach(i => i.value = '');
+    }
+  </script>
+</body>
+</html>
