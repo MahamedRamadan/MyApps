@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ET Cash - Quick Secure</title>
   <meta name="theme-color" content="#0d1b2a">
+  <link rel="manifest" href="manifest.json">
   <style>
     :root {
       --primary: #00d2ff;
@@ -380,6 +381,8 @@
       }
     };
 
+    
+
     let appConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
     let favorites = [];
     let pendingAction = null;
@@ -586,6 +589,14 @@
       }
 
       if(!tpl) return showToast("❌ الكود غير متوفر أو فارغ");
+
+        if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then((reg) => console.log('Service Worker registered', reg))
+        .catch((err) => console.log('Service Worker error', err));
+    });
+  }
 
       let finalCode = tpl
         .replace(/{num}/g, num)
